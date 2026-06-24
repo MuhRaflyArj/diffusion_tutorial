@@ -1,124 +1,75 @@
-# diffusion_tutorial
+# Diffusion Tutorial
 
-This tutorial code is based on the implementation from:
-https://github.com/lucidrains/denoising-diffusion-pytorch
+This repository is a fork of [EdwardFerdian/diffusion_tutorial](https://github.com/EdwardFerdian/diffusion_tutorial). The original README is kept in `README.old.md`.
 
-Some modifications and fixes were made to the original code for the purpose of this example tutorial.
+This project trains a 2D denoising diffusion model using `scripts/trainer_2d.py`.
 
-## Quick demo (Notebook example)
+## Setup
 
-You can find a notebook example in the `notebooks` folder. Download the .ipynb file, and upload it to your Google Colab. The notebook contains a quick and easy demo to train a 2D diffusion model.
+This project uses `uv` for dependency management. If `uv` is not installed yet, follow the official installation guide:
 
-For more detailed examples, you can follow the instructions below.
+https://docs.astral.sh/uv/getting-started/installation/
 
-## Using this repo
-
-### Installation
-
-If you have Anaconda, you can create a new environment with Python 3.10 and install the package in editable mode:
+The current `pyproject.toml` is configured to install PyTorch with CUDA 12.8 wheels.
 
 ```bash
-conda create -n tutorial python=3.10
-conda activate tutorial
-
-# Clone this github repository and go to the root folder
-pip install -e .
+uv sync
+source .venv/bin/activate
 ```
 
-## 2D diffusion model
+## Dataset
 
-### Unconditional diffusion model
+The dataset used is the NVIDIA FFHQ dataset:
 
-For unconditional diffusion, you have to put the data directly under the 'data' folder.
+https://github.com/nvlabs/ffhq-dataset
 
-#### Training
+This experiment uses the 128x128 image version, containing 70,000 face images.
 
-1. Put the images in the `data` folder
-2. Run the training script
+After training starts, the images are resized/cropped by the training pipeline to `64 x 64`.
+
+## Download Dataset
+
+Run:
 
 ```bash
-# Input your data and output dir. The channels is the number of channels in the input data
-python trainer_2d.py --data-dir [data_dir] --output-dir [model_dir] [--channels 3]
-
+python download.py
 ```
 
-#### Inference
+This downloads the 128x128 FFHQ image archive and extracts it into the `images/` folder.
 
-1. Run the inference script
+## Run Training
+
+Run:
 
 ```bash
-python sampler_2d.py --model-dir models
+python scripts/trainer_2d.py --data-dir images --output-dir models --channels 3
 ```
 
-### Classifier-free guidance
+Training checkpoints and sample images will be written to the output directory.
 
-For classifier-free guidance, you have to put the data in the 'data' folder consisting of subfolders corresponding to the different classes (e.g., 0, 1, 2, ...). The training script will then use the class labels as guidance.
+## Hardware and Parameters
 
-Example data dir structure
+- GPU: RTX 5070 Ti
+- CPU: Ryzen 7 8700F
+- RAM: 64 GB
+- Input size: `64 x 64`
+- Output size: `64 x 64`
+- Training steps: `50,000`
+- Batch size: `32`
 
-```
-data
-├── 0
-│   ├── 0.png
-│   ├── 1.png
-├── 1
-│   ├── 0.png
-│   ├── 1.png
-└── 2
-    ├── 0.png
-    ├── 1.png
-```
+## Results
 
-#### Training
+Result from every 1,000 steps is saved on [results/](results/)
 
-```bash
-python trainer_cfg_2d.py --data-dir [data_dir] --output-dir [model_dir] [--channels 3] [--num-classes 10]
-```
+The generated samples improve clearly as training progresses:
 
-#### Inference
+![Combined results across steps](results/combined.png)
 
-```bash
-python sampler_cfg_2d.py --model-dir [model_dir] [--num-classes 10]
-```
+- `1,000` steps: samples are still mostly noisy color patterns, with no clear face structure.
+- `10,000` steps: face-like shapes start to appear, but many samples are blurry or distorted.
+- `20,000` steps: faces become more recognizable, with clearer eyes, hair, and head shapes.
+- `30,000` steps: samples are sharper and more consistent, with better facial alignment.
+- `40,000` steps: most samples look like realistic face thumbnails, although some artifacts remain.
+- `50,000` steps: samples are the most stable and recognizable, with the best overall face quality in this run.
 
-## 1D diffusion model
-
-For unconditional 1D diffusion, you need to put your data into a .h5 file with an _input_ column.
-
-#### Training
-
-1. Prepare your data in a HDF5 file with containing an _input_ column
-2. Run the training script
-
-```bash
-# Input your data path and output dir. The seq-length is the length of the input sequence
-python trainer_1d.py --input-file data.h5 --output-dir models [--seq-length 480]
-```
-
-#### Inference
-
-1. Run the inference script
-
-```bash
-python sampler_1d.py --model-dir models
-```
-
-## 1D classifier-free guidance
-
-For classifier-free guidance, you need to put your data into a .h5 file with an _input_ column and a _labels_ column.
-
-#### Training
-
-1. Prepare your data in a HDF5 file with containing an _input_ and a _labels_ column
-2. Run the training script
-
-```bash
-# Input your data path and output dir. The seq-length is the length of the input sequence
-python trainer_cfg_1d.py --input-file [data.h5] --output-dir [model_dir] [--seq-length 480] [--num-classes 10]
-```
-
-#### Inference
-
-```bash
-python sampler_cfg_1d.py --model-dir [model_dir] [--num-classes 10]
-```
+**Total Training time: `3:05:21`**
